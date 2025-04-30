@@ -134,3 +134,46 @@ dist
 .yarn/build-state.yml
 .yarn/install-state.gz
 .pnp.*
+
+
+# Node.js modules
+node_modules/
+
+# Hardhat cache and artifacts
+cache/
+artifacts/
+
+# Environment variables
+.env
+
+# Hardhat config overrides
+*.local.js
+
+# Coverage reports
+coverage/
+coverage.json
+
+# Debugging files
+*.log
+debug.log
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# npm-specific files
+package-lock.json
+
+# IDE-specific files
+.idea/
+.vscode/
+
+# Optional: Ignore ABI JSONs if not needed in the repo
+abi/
+
+# Optional: Ignore gas reports
+gas-report.json
+
+# Optional: Ignore generated typechain files
+typechain/
+typechain-types/
