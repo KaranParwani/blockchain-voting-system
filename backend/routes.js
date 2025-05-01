@@ -82,47 +82,46 @@ app.get("/election/:id", async (request, response) => {
     }
  })
 
-app.post("/add_candidate", async (request, response) => {
+// Route to add a candidate
+app.post('/add_candidate', async (request, response) => {
     const { election_id, candidate_name } = request.body;
 
-    if (!election_id || !candidate_name) {
-        response.status(400).json({
-            error: "Please provide the candidate name and election ID"
-        })
-    }
-
     try {
-
         const transaction = await contract.addCandidate(election_id, candidate_name);
-        const receipt = await transaction.wait(); // Wait for transaction to be mined
 
-        // Parse the event to get the candidateId
-        const event = receipt.events.find(event => event.event === "CandidateAdded");
-        if (event) {
-            const { electionId, candidateId, name } = event.args;
-            return response.status(200).json({
-                message: "Added Candidate Successfully",
-                transaction_hash: transaction.hash,
-                election_id: electionId.toString(),
-                candidate_id: candidateId.toString(),
-                candidate_name: name,
-            });
+        // Wait for the transaction to be mined
+        await transaction.wait();
 
-        } else {
-            console.error("CandidateAdded event not found in receipt.");
-            return response.status(500).json({ error: "CandidateAdded event not emitted" });
-        }
+        // Fetch the latest candidate count from the contract
+        const election = await contract.elections(election_id);
+        const candidateCountBigNumber = election.candidateCount; // Access the candidate count from the struct
+        candidateId = candidateCountBigNumber - 1n;
 
+        response.status(200).json({
+            message: "Candidate added successfully",
+            transaction_hash: transaction.hash,
+            created_candidate_id: candidateId.toString()
+        });
+        
     } catch (error) {
-        // const add_candidate_error = error['info']['error']['message'];
-        console.error("Error fetching election:", error);
-        // response.status(500).json({ error: add_candidate_error });
+        console.error('Error adding candidate:', error);
+        response.status(500).json({ success: false, message: 'Error adding candidate', error: error.message });
+    }
+});
+
+app.get("/get_candidate", async (request, response) => {
+    const { election_id, candidate_id } = request.body;
+
+    if ( !election_id || !candidate_id ) {
+        response.status(400).json({ error : "Missing required field"});
     }
 
- })
-
-app.get("get_candidate", async (response, request) => {
-
+    const transaction = await contract.getCandidate(election_id, candidate_id);
+    response.status(200).json({
+        candidate_id: candidate_id,
+        candidate_name: transaction.name,
+        vote_count: transaction.voteCount.toString() 
+    })
 })
 
 app.listen(port, () => {
