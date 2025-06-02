@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
+import "hardhat/console.sol";
 
 contract VotingElection {
 
@@ -79,9 +80,8 @@ contract VotingElection {
 
     // Vote for a candidate in an election
     function vote(uint _electionId, uint _candidateId) public electionExists(_electionId) {
-        Election storage e = elections[_electionId];
 
-        require(block.timestamp >= e.startTime && block.timestamp <= e.endTime, "Election is not active");
+        Election storage e = elections[_electionId];
         require(!e.hasVoted[msg.sender], "You have already voted");
         require(_candidateId < e.candidateCount, "Invalid candidate ID");
 

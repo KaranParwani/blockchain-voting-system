@@ -2,6 +2,8 @@ require("dotenv").config();
 const express = require("express");
 const { ethers } = require("ethers");
 const fs = require("fs");
+const { request } = require("http");
+const path = require("path");
 
 const app = express();
 const port = 3000;
@@ -20,9 +22,16 @@ const contract = new ethers.Contract(contractAddress, abi, wallet);
 
 // API to create election
 app.post('/create_election', async (request, response) => {
-    const { election_name, start_time, end_time } = request.body;
+    const { election_name } = request.body;
 
-    if ( !election_name || !start_time || !end_time ) {
+    const secondsToAddStart = 1 * 60; // Convert minutes to seconds
+    const new_time = Math.floor(Date.now() / 1000) + secondsToAddStart;
+
+    const secondsToAdd = process.env.ELECTION_TIME_HOURS * 60 * 60; // Convert hours to seconds
+
+    end_time = new_time + secondsToAdd;
+
+    if ( !election_name || !new_time || !end_time ) {
         return response.status(400).json({ error: "Missing field required!" });
     }
 
@@ -30,18 +39,18 @@ app.post('/create_election', async (request, response) => {
     const currentTime = Math.floor(Date.now() / 1000); 
 
     // Current time in Unix timestamp
-    if (start_time <= currentTime) {
+    if (new_time < currentTime) {
         return response.status(400).json({ error: "Start time must be in the future" });
     }
     if (end_time <= currentTime) {
         return response.status(400).json({ error: "End time must be in the future" });
     }
-    if (end_time <= start_time) {
+    if (end_time <= new_time) {
         return response.status(400).json({ error: "End time must be later than start time" });
     }
-
+    
     try{
-        const transaction = await contract.createElection(election_name, start_time, end_time);
+        const transaction = await contract.createElection(election_name, new_time, end_time);
         await transaction.wait();
         
         // Fetch the latest election ID
@@ -104,24 +113,79 @@ app.post('/add_candidate', async (request, response) => {
         });
         
     } catch (error) {
-        console.error('Error adding candidate:', error);
-        response.status(500).json({ success: false, message: 'Error adding candidate', error: error.message });
+        console.error(error.info);
+        console.log('-----------------');
+        response.status(500).json({ success: false, message: 'Error adding candidate', error: error.info.error.message });
     }
 });
 
 app.get("/get_candidate", async (request, response) => {
-    const { election_id, candidate_id } = request.body;
+    try 
+    {
+        const { election_id, candidate_id } = request.query;
 
-    if ( !election_id || !candidate_id ) {
-        response.status(400).json({ error : "Missing required field"});
+        console.log(election_id);
+        console.log(candidate_id);
+
+        if ( !election_id || !candidate_id ) {
+            response.status(400).json({ error : "Missing required field"});
+        }
+
+        const transaction = await contract.getCandidate(election_id, candidate_id);
+        response.status(200).json({
+            candidate_id: candidate_id,
+            candidate_name: transaction.name,
+            vote_count: transaction.voteCount.toString() 
+        })
+    } catch (error) {
+        console.error("Error fetching election:", error);
+        response.status(500).json({ error: error? error.message : error.shortMessage });
     }
+})
 
-    const transaction = await contract.getCandidate(election_id, candidate_id);
-    response.status(200).json({
-        candidate_id: candidate_id,
-        candidate_name: transaction.name,
-        vote_count: transaction.voteCount.toString() 
-    })
+app.post('/vote', async (request, response) => {
+    try {
+        const { election_id, candidate_id, voterPrivatekey } = request.body;
+
+        const unixTimestamp = Math.floor(Date.now() / 1000);
+        console.log(unixTimestamp);
+        
+        if ( !election_id || !candidate_id || !voterPrivatekey ) {
+            response.status(400).json({ error : "Missing required field"});
+        }
+
+        // Initialize provider and wallet
+        const provider = new ethers.JsonRpcProvider("HTTP://127.0.0.1:7545");
+        const voterWallet = new ethers.Wallet(voterPrivatekey, provider);
+
+        // Load ABI
+        const abi = JSON.parse(fs.readFileSync(path.resolve(process.env.ABI_PATH), "utf8"));
+
+        // Initialize contract instance with voter's wallet
+        const contract = new ethers.Contract(contractAddress, abi, voterWallet);
+
+        const transaction = await contract.vote(election_id, candidate_id);
+        console.log("Transaction sent:", transaction.hash);
+
+        const receipt = await transaction.wait();
+
+        if (receipt.status == 1) {
+            response.status(200).json({
+                transaction_hash: transaction.hash,
+                message: "You have successfully voted",
+                block_number: receipt.blockNumber
+            });
+        } else {
+            response.status(400).json({
+                transaction_hash: transaction.hash,
+                message: "Something went wrong",
+            });
+        }
+
+    } catch (error) {
+        console.error("Error : ", error);
+        response.status(500).json({ error: "Fail to vote", message: error});
+    }
 })
 
 app.listen(port, () => {

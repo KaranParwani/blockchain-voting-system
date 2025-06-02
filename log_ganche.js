@@ -6,5 +6,5 @@ async function getTransactionDetails(txHash) {
     console.log("Transaction Details:", tx);
 }
 
-const txHash = "0xfde8a30d49d85ff776feff6dd65e82f8d641b6dc5b4cb2edf2967068733c27f6"; // Replace with the actual transaction hash
+const txHash = "0xea9f0926fa8d43b8b6b00361bfb9194059afa2e29c669bf3ad546282499b9416"; // Replace with the actual transaction hash
 getTransactionDetails(txHash)
