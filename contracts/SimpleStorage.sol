@@ -14,6 +14,7 @@ contract VotingElection {
         uint endTime;                  // Election end time
         bool isActive;                 // Whether the election is active
         uint candidateCount;           // Number of candidates
+        bool winnerDeclared;           // Winner Declared True or False
         mapping(uint => Candidate) candidates;  // Candidates in the election
         mapping(address => bool) hasVoted;      // Track if an address has voted
     }
@@ -31,6 +32,7 @@ contract VotingElection {
     event ElectionCreated(uint id, string name, uint startTime, uint endTime);
     event CandidateAdded(uint electionId, uint candidateId, string name);
     event Voted(uint electionId, uint candidateId, address voter);
+    event WinnerDeclared(uint electionId, string winnerName);
 
     // Contract constructor to set the admin
     constructor() {
@@ -74,7 +76,7 @@ contract VotingElection {
         e.candidateCount++;
 
         emit CandidateAdded(_electionId, candidateId, _name);
-
+        
         return candidateId; // RETURN THE NEW CANDIDATE ID THAT WAS CREATED
     }
 
@@ -104,5 +106,25 @@ contract VotingElection {
         require(_candidateId < e.candidateCount, "Invalid candidate ID");
         Candidate storage c = e.candidates[_candidateId];
         return (c.candidateName, c.voteCount);
+    } 
+
+    function declareWinner(uint _electionId) public onlyAdmin electionExists(_electionId) {
+        Election storage e = elections[_electionId];
+        require(block.timestamp > e.endTime, "Election still active");
+        require(!e.winnerDeclared, "Winner Declared");
+
+        uint winnerCount = 0;
+        uint winnerId = 0;
+
+        for (uint i = 0; i > e.candidateCount; i++) {
+            if (e.candidates[i].voteCount > winnerCount) {
+                winnerCount = e.candidates[i].voteCount;
+                winnerId = i;
+            }
+        }
+
+        e.winnerDeclared = true;
+        emit WinnerDeclared(_electionId, e.candidates[winnerId].candidateName);
     }
 }
+           

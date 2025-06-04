@@ -177,3 +177,6 @@ gas-report.json
 # Optional: Ignore generated typechain files
 typechain/
 typechain-types/
+
+deploy.js
+hardhat.config.js

@@ -5,8 +5,26 @@ const fs = require("fs");
 const { request } = require("http");
 const path = require("path");
 
+const swaggerUi = require("swagger-ui-express");
+const swaggerJsdoc = require("swagger-jsdoc");
+
+const options = {
+    definition: {
+        openapi: "3.0.0",
+        info: {
+            title: "My API",
+            version: "1.0.0",
+        },
+    },
+    apis: ["./routes/*.js"], // Path to your API files
+};
+
+const swaggerSpec = swaggerJsdoc(options);
+
 const app = express();
 const port = 3000;
+
+app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 app.use(express.json());
 
@@ -187,6 +205,9 @@ app.post('/vote', async (request, response) => {
         response.status(500).json({ error: "Fail to vote", message: error});
     }
 })
+
+app.get("  ")
+
 
 app.listen(port, () => {
     console.log(`Server running on http://localhost:${port}`);
