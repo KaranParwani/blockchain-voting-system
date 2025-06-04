@@ -108,23 +108,33 @@ contract VotingElection {
         return (c.candidateName, c.voteCount);
     } 
 
-    function declareWinner(uint _electionId) public onlyAdmin electionExists(_electionId) {
+    function declareWinner(uint _electionId) public electionExists(_electionId) {
         Election storage e = elections[_electionId];
-        require(block.timestamp > e.endTime, "Election still active");
-        require(!e.winnerDeclared, "Winner Declared");
+        console.log("Election Name:", e.electionName);
+        console.log("End Time:", e.endTime);
+        console.log("Current Time:", block.timestamp);
+        console.log("Winner Declared:", e.winnerDeclared);
 
-        uint winnerCount = 0;
-        uint winnerId = 0;
+        require(block.timestamp > e.endTime, "Election is still active");
+        require(!e.winnerDeclared, "Winner already declared");
 
-        for (uint i = 0; i > e.candidateCount; i++) {
-            if (e.candidates[i].voteCount > winnerCount) {
-                winnerCount = e.candidates[i].voteCount;
+        uint winningVoteCount = 0;
+        uint winnerId;
+        for (uint i = 0; i < e.candidateCount; i++) {
+            console.log("Candidate ID:", i);
+            console.log("Vote Count:", e.candidates[i].voteCount);
+            if (e.candidates[i].voteCount > winningVoteCount) {
+                winningVoteCount = e.candidates[i].voteCount;
                 winnerId = i;
+                console.log("New Winner ID:", winnerId);
+                console.log("Winning Vote Count:", winningVoteCount);
             }
         }
 
         e.winnerDeclared = true;
+        console.log("Final Winner ID:", winnerId);
         emit WinnerDeclared(_electionId, e.candidates[winnerId].candidateName);
     }
+
 }
            
