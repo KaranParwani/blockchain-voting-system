@@ -5,26 +5,8 @@ const fs = require("fs");
 const { request } = require("http");
 const path = require("path");
 
-const swaggerUi = require("swagger-ui-express");
-const swaggerJsdoc = require("swagger-jsdoc");
-
-const options = {
-    definition: {
-        openapi: "3.0.0",
-        info: {
-            title: "My API",
-            version: "1.0.0",
-        },
-    },
-    apis: ["./routes/*.js"], // Path to your API files
-};
-
-const swaggerSpec = swaggerJsdoc(options);
-
 const app = express();
 const port = 3000;
-
-app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 app.use(express.json());
 
@@ -42,10 +24,14 @@ const contract = new ethers.Contract(contractAddress, abi, wallet);
 app.post('/create_election', async (request, response) => {
     const { election_name } = request.body;
 
-    const secondsToAddStart = 1 * 60; // Convert minutes to seconds
+    const secondsToAddStart = 5 * 60; // Convert minutes to seconds
+    console.log(secondsToAddStart);
+
     const new_time = Math.floor(Date.now() / 1000) + secondsToAddStart;
 
-    const secondsToAdd = process.env.ELECTION_TIME_HOURS * 60 * 60; // Convert hours to seconds
+    console.log(new_time);
+
+    const secondsToAdd = 1 * 60; // Convert hours to seconds
 
     end_time = new_time + secondsToAdd;
 
@@ -154,12 +140,13 @@ app.get("/get_candidate", async (request, response) => {
             candidate_id: candidate_id,
             candidate_name: transaction.name,
             vote_count: transaction.voteCount.toString() 
-        })
-    } catch (error) {
-        console.error("Error fetching election:", error);
-        response.status(500).json({ error: error? error.message : error.shortMessage });
+        });
+
+    } catch(error) {
+        console.error("Error : ", error);
+        response.status(500).json({ error: "Fail to get candidate", message: error});
     }
-})
+});
 
 app.post('/vote', async (request, response) => {
     try {
@@ -204,10 +191,38 @@ app.post('/vote', async (request, response) => {
         console.error("Error : ", error);
         response.status(500).json({ error: "Fail to vote", message: error});
     }
+});
+
+app.post("/declare_winner", async (request, response) => {
+    const { election_id } = request.query;
+    try {
+        
+        if (!election_id) {
+            response.status(400).json({ error : "Missing required field"});
+        }
+
+        const transaction = await contract.declareWinner(election_id);
+        console.log("Transaction sent:", transaction.hash);
+
+        const receipt = await transaction.wait();
+        if (receipt.status == 1) {
+            response.status(200).json({
+                transaction_hash: transaction.hash,
+                message: "The winner has been declared",
+                block_number: receipt.blockNumber
+            });
+        } else {
+            response.status(400).json({
+                transaction_hash: transaction.hash,
+                message: "Something went wrong",
+            });
+        }
+
+    } catch (error) {
+        console.error("Error : ", error);
+        response.status(500).json({ error: "Fail to Declare Winner", message: error});
+    }
 })
-
-app.get("  ")
-
 
 app.listen(port, () => {
     console.log(`Server running on http://localhost:${port}`);
