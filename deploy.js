@@ -8,9 +8,12 @@ async function main() {
 
     // Initialize provider and wallet
     const provider = new ethers.JsonRpcProvider("HTTP://127.0.0.1:7545");
+
+    console.log(process.env.PRIVATE_KEY);
     const wallet = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
 
     // Load ABI
+    console.log(process.env.ABI_PATH);
     const abi = JSON.parse(fs.readFileSync(path.resolve(process.env.ABI_PATH), "utf8"));
 
     // Load bytecode (plain string)
